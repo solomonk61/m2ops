@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  nginx:
+    # build:
+    #   context: ./nginx
+    image: nginx
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # - ./nginx/upstream.conf:/etc/nginx/sites-available/upstream.conf:ro
+      # - ./nginx/admin.conf:/etc/nginx/sites-available/admin.conf:ro
+      # - ./nginx/admin.conf:/etc/nginx/sites-enabled/admin.conf:ro
+    depends_on:
+      - app
+      - admin
+    restart: always
+    ports:
+      - "80:80" 
+
+  app:
+    build: 
+      context: ./../m2front
+    volumes:
+      - ./../m2front:/opt/app
+    depends_on:
+      - admin
+    environment:
+      ENDPOINT: ${ADMIN_URL}/graphql
+      NEXT_PUBLIC_API_URL: ${ADMIN_URL}
+      NEXT_PUBLIC_DATABASE_URL: postgres://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@postgres:${DATABASE_PORT}/${DATABASE_NAME}?synchronize=true
+      NEXTAUTH_URL: ${ADMIN_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+
+  admin:
+    image: strapi/strapi
+    environment:
+      DATABASE_CLIENT: postgres
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: ${DATABASE_PORT}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      # HOST: example.com
+      # PORT: 80
+      URL: ${ADMIN_URL}
+    volumes:
+      - ./../m2back:/srv/app
+    ports:
+      - '1337:1337'
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: strapi
+      POSTGRES_USER: strapi
+      POSTGRES_PASSWORD: strapi
+    volumes:
+      - ./../data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+# admin:
+# build: 
+#   context: ./m2back
